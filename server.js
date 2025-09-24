@@ -1,21 +1,38 @@
 // backend/server.js
 
 const express = require('express');
-const path = require('path'); // Import the 'path' module for handling file paths
+const path = require('path');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const multer = require('multer'); // Import multer for file uploads
+const multer = require('multer');
 require('dotenv').config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000; // Use Render's port if available
 
-app.use(cors());
 app.use(express.json());
 
+// --- CORS CONFIGURATION ---
+const allowedOrigins = [
+  'http://localhost:3000', // for local development
+  'https://Akshith-ak.github.io' // your frontend GitHub Pages URL
+];
+
+app.use(cors({
+  origin: function(origin, callback){
+    // allow requests with no origin (like mobile apps or Postman)
+    if(!origin) return callback(null, true);
+    if(allowedOrigins.indexOf(origin) === -1){
+      const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET','POST','PUT','DELETE'],
+  credentials: true
+}));
+
 // --- SERVE STATIC FILES ---
-// This line makes the 'uploads' folder publicly accessible
-// The URL will be http://localhost:5000/uploads/filename.jpg
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- CONNECT TO DATABASE ---
@@ -25,41 +42,28 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- MULTER FILE UPLOAD CONFIGURATION ---
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // The folder where files will be stored
-  },
-  filename: function (req, file, cb) {
-    // Create a unique filename (timestamp + original name) to prevent files with the same name from overwriting each other
-    cb(null, `${Date.now()}-${file.originalname}`);
-  }
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
-// --- API ROUTES ---
-// Import the route files
-const reportRoutes = require('./routes/reports');
-const authRoutes = require('./routes/auth');
-
-// --- NEW UPLOAD ENDPOINT ---
-// This route will handle the file upload itself
+// --- UPLOAD ENDPOINT ---
 app.post('/api/upload', upload.single('evidence'), (req, res) => {
-  // 'evidence' is the key we'll use in our frontend form data
-  if (!req.file) {
-    return res.status(400).send({ message: 'No file uploaded.' });
-  }
-  // When multer processes the file, it adds a 'file' object to the request.
-  // We send back the path to the file so the frontend knows where it is.
+  if (!req.file) return res.status(400).send({ message: 'No file uploaded.' });
   res.send({
     message: 'File uploaded successfully',
     filePath: `/uploads/${req.file.filename}`
   });
 });
 
-// Use the main API routes
+// --- MAIN API ROUTES ---
+const reportRoutes = require('./routes/reports');
+const authRoutes = require('./routes/auth');
+
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 
 // --- START SERVER ---
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });

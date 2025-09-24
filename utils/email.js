@@ -45,3 +45,4 @@ const sendNewReportNotification = (report) => {
 };
 
 module.exports = { sendNewReportNotification };
+
