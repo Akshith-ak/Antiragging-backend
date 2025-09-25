@@ -8,30 +8,23 @@ const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
 const app = express();
-// Use the port provided by the hosting service (like Render), or 5000 for local development
 const PORT = process.env.PORT || 5000;
 
 // --- 1. DEFINE YOUR "GUEST LIST" (ALLOWED ORIGINS) ---
-// These are the only URLs that are allowed to make requests to your backend.
+// We will now also check if the origin is a Render URL.
 const allowedOrigins = [
-  // **IMPORTANT: REPLACE THIS WITH YOUR DEPLOYED FRONTEND URL**
-  // It could be from GitHub Pages or from Render itself.
-  'https://akshith-ak.github.io', // Your GitHub pages URL
-  'https://your-frontend-name.onrender.com', // **<-- IF YOU DEPLOYED FRONTEND ON RENDER, USE THIS URL INSTEAD**
-  
-  // This allows you to still test locally
-  'http://localhost:3000' 
+  'https://akshith-ak.github.io', // Your GitHub Pages URL
+  'http://localhost:3000'         // For local development
 ];
 
-// --- 2. CONFIGURE THE CORS MIDDLEWARE ---
+// --- 2. CONFIGURE THE CORS MIDDLEWARE WITH A MORE FLEXIBLE CHECK ---
 const corsOptions = {
   origin: function (origin, callback) {
-    // Check if the incoming request's URL is on our guest list
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      // If it is, allow the request
+    // The '!origin' part allows requests from tools like Postman that don't have an origin.
+    // The 'origin.endsWith('.onrender.com')' check allows any subdomain from Render.
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin || origin.endsWith('.onrender.com')) {
       callback(null, true);
     } else {
-      // If it is not, block the request with a CORS error
       callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'));
     }
   }
